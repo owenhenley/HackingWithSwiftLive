@@ -7,8 +7,11 @@
 //
 
 import UIKit
+import Vision
+import VisionKit
+import NaturalLanguage
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, VNDocumentCameraViewControllerDelegate {
     enum Section {
         case main
     }
@@ -77,10 +80,83 @@ class ViewController: UIViewController {
     }
 
     @objc func scanDocument() {
-
+        let vc = VNDocumentCameraViewController()
+        vc.delegate = self
+        present(vc, animated: true)
     }
 
     @objc func changeLayout() {
-        collectionView.setCollectionViewLayout(createBasicLayout(), animated: true)
+        collectionView.setCollectionViewLayout(createCompositionalLayout(), animated: true)
+    }
+
+    func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
+        dismiss(animated: true)
+    }
+
+    func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFailWithError error: Error) {
+        dismiss(animated: true)
+    }
+
+    func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
+        dismiss(animated: true)
+        DispatchQueue.global(qos: .userInitiated).async {
+            // scan pages
+            let request = VNRecognizeTextRequest()
+            let requests = [request]
+
+            for i in 0 ..< scan.pageCount {
+                let pageImage = scan.imageOfPage(at: i)
+                guard let imageData = pageImage.pngData() else { continue }
+
+                let handler = VNImageRequestHandler(data: imageData)
+                try? handler.perform(requests)
+
+                guard let observations = request.results as? [VNRecognizedTextObservation] else {
+                    fatalError("nope")
+                }
+
+                self.parse(observations, for: imageData)
+            }
+
+            if scan.pageCount > 0 {
+                DispatchQueue.main.async {
+                    self.saveData()
+                    self.reloadData(animated: true)
+                }
+            }
+        }
+    }
+
+    func parse(_ observations: [VNRecognizedTextObservation], for imageData: Data) {
+        var pageText = ""
+
+        for observation in observations {
+            guard let bestCandidate = observation.topCandidates(1).first else { continue }
+            pageText += "\(bestCandidate.string) "
+        }
+
+        let tagger = NLTagger(tagSchemes: [.sentimentScore])
+        tagger.string = pageText
+        let (sentiment, _) = tagger.tag(at: pageText.startIndex, unit: .document, scheme: .sentimentScore)
+        let document = ScannedDocument(text: pageText, sentiment: sentiment)
+
+        try? imageData.write(to: document.url)
+        documents.append(document)
+        print(document)
+    }
+
+    func createCompositionalLayout() -> UICollectionViewLayout {
+        let squareSize: CGFloat = 0.5
+        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(squareSize), heightDimension: .fractionalHeight(1))
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        let spacing: CGFloat = 5
+
+        item.contentInsets = NSDirectionalEdgeInsets(top: spacing, leading: spacing, bottom: spacing, trailing: spacing)
+
+        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .fractionalWidth(squareSize))
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+        let section = NSCollectionLayoutSection(group: group)
+
+        return UICollectionViewCompositionalLayout(section: section)
     }
 }

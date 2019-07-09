@@ -10,7 +10,7 @@ import SwiftUI
 
 struct ItemDetail : View {
     var item: MenuItem
-    
+    @State var showingAlert = false
     @EnvironmentObject var order: Order
     
     var body: some View {
@@ -31,9 +31,13 @@ struct ItemDetail : View {
             
             Button(action: {
                 self.order.add(item: self.item)
+                self.showingAlert = true
             }) {
                 Text("Order this")
                     .font(.headline)
+            }
+            .presentation($showingAlert) {
+                 Alert(title: Text("Added to basket"), message: Text("Nice! We added this to your basket!"), dismissButton: .default(Text("Great!")))
             }
             
             Spacer()

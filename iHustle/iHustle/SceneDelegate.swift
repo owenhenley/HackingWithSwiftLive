@@ -12,13 +12,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
-
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
         // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
         // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
         window?.tintColor = .systemBlue
         guard let _ = (scene as? UIWindowScene) else { return }
+
+        if let userActivity = connectionOptions.userActivities.first ?? session.stateRestorationActivity {
+            configure(window: window, with: userActivity)
+        }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -49,6 +52,28 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // to restore the scene back to its current state.
     }
 
+    func configure(window: UIWindow?, with activity: NSUserActivity) {
+        // 1
+        guard let id = activity.userInfo?["id"] as? String else { return }
+        guard let navigationController = window?.rootViewController as? UINavigationController else { return }
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
 
+        if activity.activityType == Group.openActivityType {
+            // 2
+            guard let group = DataController.shared.groups.first(where: { $0.id == id }) else { return }
+            let groupVC = storyboard.instantiateViewController(identifier: "EditGroup") { coder in
+                EditGroupViewController(coder: coder, group: group)
+            }
+
+            navigationController.pushViewController(groupVC, animated: false)
+        } else if activity.activityType == Goal.openActivityType {
+            // 3
+            
+        }
+    }
+
+    func stateRestorationActivity(for scene: UIScene) -> NSUserActivity? {
+        scene.userActivity
+    }
 }
 

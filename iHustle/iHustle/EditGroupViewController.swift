@@ -33,13 +33,9 @@ class EditGroupViewController: UITableViewController {
         didUpdate()
     }
 
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        tableView.reloadData()
-    }
-
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        view.window?.windowScene?.userActivity = group.userActivity
     }
 
     @objc func didUpdate() {
@@ -103,7 +99,6 @@ class EditGroupViewController: UITableViewController {
     @IBAction func addGoal(_ sender: Any) {
         let goal = Goal(name: "New Goal", priority: .medium, isCompleted: false)
         group.goals.append(goal)
-        tableView.insertRows(at: [IndexPath(row: group.goals.count - 1, section: 0)], with: .automatic)
         edit(goal)
     }
 

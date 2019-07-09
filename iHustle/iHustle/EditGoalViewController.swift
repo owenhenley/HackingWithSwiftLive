@@ -27,6 +27,7 @@ class EditGoalViewController: UITableViewController, UITextFieldDelegate {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        view.window?.windowScene?.userActivity = goal.userActivity
     }
 
     @objc func didUpdate() {
